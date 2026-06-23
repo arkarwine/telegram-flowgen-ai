@@ -56,7 +56,44 @@ select_python
 
 cd "$PROJECT_DIR"
 echo "Using $("$PYTHON_BIN" -c 'import sys; print(sys.executable, sys.version.split()[0])')"
+
+SELECTED_PYTHON_VERSION="$("$PYTHON_BIN" - <<'PY'
+import sys
+print(f"{sys.version_info.major}.{sys.version_info.minor}")
+PY
+)"
+
+if [[ -d .venv ]]; then
+  if [[ -x .venv/bin/python ]]; then
+    VENV_PYTHON_VERSION="$(".venv/bin/python" - <<'PY' 2>/dev/null || true
+import sys
+print(f"{sys.version_info.major}.{sys.version_info.minor}")
+PY
+)"
+  else
+    VENV_PYTHON_VERSION=""
+  fi
+
+  if [[ "$VENV_PYTHON_VERSION" != "$SELECTED_PYTHON_VERSION" ]]; then
+    echo "Existing .venv uses Python ${VENV_PYTHON_VERSION:-unknown}; recreating it with Python ${SELECTED_PYTHON_VERSION}."
+    rm -rf .venv
+  fi
+fi
+
 "$PYTHON_BIN" -m venv .venv
+
+CREATED_VENV_VERSION="$(".venv/bin/python" - <<'PY'
+import sys
+print(f"{sys.version_info.major}.{sys.version_info.minor}")
+PY
+)"
+
+if [[ "$CREATED_VENV_VERSION" != "$SELECTED_PYTHON_VERSION" ]]; then
+  echo "Virtualenv interpreter mismatch: expected ${SELECTED_PYTHON_VERSION}, got ${CREATED_VENV_VERSION}."
+  echo "Remove .venv and rerun the installer."
+  exit 1
+fi
+
 ".venv/bin/python" -m pip install --upgrade pip
 ".venv/bin/python" -m pip install -r requirements.txt
 

@@ -25,6 +25,13 @@ uv python install 3.12
 PYTHON_BIN="$(uv python find 3.12)" ./install.sh
 ```
 
+If an earlier install attempt created `.venv` with Python 3.14, remove it before rerunning, or use the updated installer which recreates mismatched virtualenvs automatically:
+
+```bash
+rm -rf .venv
+PYTHON_BIN="$(uv python find 3.12)" bash install.sh
+```
+
 On Ubuntu 22.04 or 24.04, another option is deadsnakes:
 
 ```bash
