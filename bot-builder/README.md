@@ -16,12 +16,24 @@ chmod +x install.sh
 ./install.sh
 ```
 
-If your server defaults to Python 3.14, install a supported interpreter and pass it explicitly:
+If your server defaults to Python 3.14 and apt does not provide `python3.12`, use `uv` to install a managed Python:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+uv python install 3.12
+PYTHON_BIN="$(uv python find 3.12)" ./install.sh
+```
+
+On Ubuntu 22.04 or 24.04, another option is deadsnakes:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y python3.12 python3.12-venv python3.12-dev
-PYTHON_BIN=python3.12 ./install.sh
+sudo apt-get install -y software-properties-common
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt-get update
+sudo apt-get install -y python3.13 python3.13-venv python3.13-dev
+PYTHON_BIN=python3.13 ./install.sh
 ```
 
 Then edit `.env`:

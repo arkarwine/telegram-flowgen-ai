@@ -28,13 +28,27 @@ PY
     fi
   done
 
+  if command -v uv >/dev/null 2>&1; then
+    for version in 3.13 3.12 3.11; do
+      if uv python find "$version" >/dev/null 2>&1; then
+        PYTHON_BIN="$(uv python find "$version")"
+        return
+      fi
+    done
+    echo "uv is installed, but no supported managed Python was found. Installing Python 3.12 with uv."
+    uv python install 3.12
+    PYTHON_BIN="$(uv python find 3.12)"
+    return
+  fi
+
   echo "Python 3.11, 3.12, or 3.13 is required."
   echo "Your system may be defaulting to Python 3.14, which is too new for current native dependencies."
-  echo "Install a supported interpreter, for example:"
-  echo "  sudo apt-get update"
-  echo "  sudo apt-get install -y python3.12 python3.12-venv python3.12-dev"
-  echo "Then rerun:"
-  echo "  PYTHON_BIN=python3.12 ./install.sh"
+  echo "Install a supported interpreter with uv:"
+  echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"
+  echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+  echo "  uv python install 3.12"
+  echo "  PYTHON_BIN=\"\$(uv python find 3.12)\" ./install.sh"
+  echo "Or, on supported Ubuntu LTS releases, install python3.11 or python3.13 from deadsnakes."
   exit 1
 }
 
