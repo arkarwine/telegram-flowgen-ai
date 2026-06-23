@@ -45,6 +45,8 @@ class LifecycleService:
             return LifecycleReply(False, "")
         if kind == "list":
             return LifecycleReply(True, self._list_bots(user_id, is_super_admin, text))
+        if not owned_bots:
+            return LifecycleReply(False, "")
         bot = self._resolve_bot(user_id, str(intent.get("bot_name", "")))
         if bot is None:
             return LifecycleReply(True, "I could not tell which bot you mean. Please mention its name.")

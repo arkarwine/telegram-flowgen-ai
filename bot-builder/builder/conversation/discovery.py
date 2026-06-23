@@ -14,6 +14,12 @@ from builder.schema.validator import SchemaValidator
 
 
 BOT_TOKEN_RE = re.compile(r"^\d{6,}:[A-Za-z0-9_-]{20,}$")
+BUILD_NOW_RE = re.compile(
+    r"\b(build|create|make|generate|start|proceed|go ahead|done|enough|that's enough|that is enough)\b",
+    re.IGNORECASE,
+)
+MIN_DISCOVERY_QUESTION_COUNT = 2
+MAX_DISCOVERY_QUESTION_COUNT = 4
 
 
 class BuilderConversation:
@@ -55,6 +61,18 @@ class BuilderConversation:
             phase = "discovery"
             state = {"history": []}
 
+        if phase == "confirmation":
+            await self._handle_confirmation(message, user_id, text, state)
+            return
+
+        if self._history(state):
+            await self._handle_discovery(message, user_id, text, state)
+            return
+
+        if self._looks_like_new_bot_request(text):
+            await self._handle_discovery(message, user_id, text, state)
+            return
+
         lifecycle_reply = await self.lifecycle.handle(
             user_id,
             text,
@@ -64,10 +82,6 @@ class BuilderConversation:
             await message.reply_text(lifecycle_reply.text)
             if lifecycle_reply.document_path is not None:
                 await message.reply_document(str(lifecycle_reply.document_path))
-            return
-
-        if phase == "confirmation":
-            await self._handle_confirmation(message, user_id, text, state)
             return
 
         await self._handle_discovery(message, user_id, text, state)
@@ -191,14 +205,33 @@ class BuilderConversation:
             return summary + "\n\nDoes that look right, or should I change anything?"
 
     def _has_enough_discovery(self, history: list[str]) -> bool:
-        user_text = " ".join(item for item in history if item.startswith("User"))
-        user_turns = len([item for item in history if item.startswith("User")])
+        user_lines = [item for item in history if item.startswith("User")]
+        builder_questions = len([item for item in history if item.startswith("Builder:")])
+        user_text = " ".join(user_lines)
+        user_turns = len(user_lines)
         enough_words = len(user_text.split()) >= 45
         has_purpose = any(word in user_text.casefold() for word in ["bot", "users", "customers", "students", "group", "admin"])
-        return user_turns >= 5 or (user_turns >= 2 and enough_words and has_purpose)
+        latest_user_text = user_lines[-1].split(":", 1)[1].strip() if user_lines else ""
+        previous_user_text = " ".join(line.split(":", 1)[1].strip() for line in user_lines[:-1])
+        user_requested_build = BUILD_NOW_RE.search(latest_user_text) is not None
+        has_prior_details = len(previous_user_text.split()) >= 8 or has_purpose
+        hit_question_cap = builder_questions >= MAX_DISCOVERY_QUESTION_COUNT and user_turns >= 2
+        asked_minimum = builder_questions >= MIN_DISCOVERY_QUESTION_COUNT
+        return (
+            hit_question_cap
+            or user_turns >= 5
+            or (asked_minimum and user_requested_build and has_prior_details)
+            or (user_turns >= 2 and enough_words and has_purpose)
+            or (user_turns >= 3 and has_purpose)
+        )
 
     def _history(self, state: dict[str, object]) -> list[str]:
         raw_history = state.get("history", [])
         if isinstance(raw_history, list):
             return [str(item) for item in raw_history]
         return []
+
+    def _looks_like_new_bot_request(self, text: str) -> bool:
+        normalized = text.casefold()
+        creation_verbs = ["build", "create", "make", "generate", "new bot", "i want a bot", "i need a bot"]
+        return "bot" in normalized and any(phrase in normalized for phrase in creation_verbs)
