@@ -1,0 +1,11 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+builder.db
+builder.db-*
+builder.log*
+session/
+bots/*/
+!bots/.gitkeep
+
