@@ -3,18 +3,45 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_NAME="telegram-bot-builder"
-PYTHON_BIN="${PYTHON_BIN:-python3.11}"
 
-if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
-  PYTHON_BIN="python3"
-fi
+select_python() {
+  if [[ -n "${PYTHON_BIN:-}" ]]; then
+    if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+      echo "PYTHON_BIN is set to '${PYTHON_BIN}', but that command was not found."
+      exit 1
+    fi
+    "$PYTHON_BIN" - <<'PY'
+import sys
+if not ((3, 11) <= sys.version_info[:2] <= (3, 13)):
+    raise SystemExit(
+        f"Python {sys.version_info.major}.{sys.version_info.minor} is not supported by this installer. "
+        "Use Python 3.11, 3.12, or 3.13."
+    )
+PY
+    return
+  fi
 
-if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
-  echo "Python 3.11+ is required."
+  for candidate in python3.13 python3.12 python3.11; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+      PYTHON_BIN="$candidate"
+      return
+    fi
+  done
+
+  echo "Python 3.11, 3.12, or 3.13 is required."
+  echo "Your system may be defaulting to Python 3.14, which is too new for current native dependencies."
+  echo "Install a supported interpreter, for example:"
+  echo "  sudo apt-get update"
+  echo "  sudo apt-get install -y python3.12 python3.12-venv python3.12-dev"
+  echo "Then rerun:"
+  echo "  PYTHON_BIN=python3.12 ./install.sh"
   exit 1
-fi
+}
+
+select_python
 
 cd "$PROJECT_DIR"
+echo "Using $("$PYTHON_BIN" -c 'import sys; print(sys.executable, sys.version.split()[0])')"
 "$PYTHON_BIN" -m venv .venv
 ".venv/bin/python" -m pip install --upgrade pip
 ".venv/bin/python" -m pip install -r requirements.txt
@@ -89,4 +116,3 @@ Next steps:
    tail -f ${PROJECT_DIR}/builder.log
 
 POSTINSTALL
-

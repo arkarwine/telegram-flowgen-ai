@@ -6,12 +6,22 @@ No Docker, no web server, no webhooks, and no external services except Telegram 
 
 ## Setup
 
+Use Python 3.11, 3.12, or 3.13. Python 3.14 is currently too new for some native dependencies in this stack and can fail while building `pydantic-core`.
+
 On Ubuntu:
 
 ```bash
 cd bot-builder
 chmod +x install.sh
 ./install.sh
+```
+
+If your server defaults to Python 3.14, install a supported interpreter and pass it explicitly:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y python3.12 python3.12-venv python3.12-dev
+PYTHON_BIN=python3.12 ./install.sh
 ```
 
 Then edit `.env`:
@@ -110,4 +120,3 @@ python tests/smoke_codegen.py
 ```
 
 The smoke test validates a schema containing every registered capability block, generates a bot directory in a temporary folder, checks for forbidden placeholder markers in generated source, and compiles every generated Python file.
-
